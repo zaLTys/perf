@@ -1,0 +1,94 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+.secrets
+
+# k6 outputs and results
+results/
+reports/
+*.tar.gz
+*.json.gz
+summary.json
+k6-results.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+k6.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Node modules (if added)
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Docker volumes and data
+docker/grafana/grafana.db
+docker/grafana/*.db
+docker/prometheus/data/
+docker/*/data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Jenkins workspace (if running locally)
+.jenkins/
+workspace/
+
+# Misc
+.auth_tokens
+test-data-generated/

@@ -1,0 +1,37 @@
+{
+    "name": "k6-performance-poc",
+    "version": "1.0.0",
+    "description": "Multi-team k6 performance testing monorepo with shared utilities and CI/CD integration",
+    "private": true,
+    "scripts": {
+        "docker:up": "cd docker && docker-compose up -d",
+        "docker:down": "cd docker && docker-compose down",
+        "docker:logs": "cd docker && docker-compose logs -f",
+        "test:local": "k6 run -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml teams/teamA/load/ramp_up/test.js",
+        "validate:yaml": "find teams -type f -name 'config.yaml' -print0 | xargs -0 -n1 yq e > /dev/null || echo 'yq not installed'",
+        "validate:all": "npm run validate:yaml",
+        "help": "echo 'Available scripts: docker:up, docker:down, test:local, validate:yaml'"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-org/k6-performance-poc.git"
+    },
+    "keywords": [
+        "k6",
+        "performance-testing",
+        "load-testing",
+        "monorepo",
+        "ci-cd",
+        "jenkins"
+    ],
+    "author": "Your Team",
+    "license": "MIT",
+    "devDependencies": {},
+    "dependencies": {},
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "k6": {
+        "version": ">=0.45.0"
+    }
+}
