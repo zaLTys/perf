@@ -2047,13 +2047,10 @@
                                     },
                                     {
                                         "current":  {
-
+                                                        "selected":  true,
+                                                        "value":  "p95",
+                                                        "text":  "p95"
                                                     },
-                                        "datasource":  {
-                                                           "type":  "prometheus",
-                                                           "uid":  "prometheus"
-                                                       },
-                                        "definition":  "metrics(k6_http_req_duration_)",
                                         "description":  "Statistic for Trend Metrics Queries. The available options depend on the values of the K6_PROMETHEUS_RW_TREND_STATS setting.",
                                         "hide":  0,
                                         "includeAll":  false,
@@ -2061,17 +2058,45 @@
                                         "multi":  false,
                                         "name":  "quantile_stat",
                                         "options":  [
-
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "p90",
+                                                            "text":  "p90"
+                                                        },
+                                                        {
+                                                            "selected":  true,
+                                                            "value":  "p95",
+                                                            "text":  "p95"
+                                                        },
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "p99",
+                                                            "text":  "p99"
+                                                        },
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "min",
+                                                            "text":  "min"
+                                                        },
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "max",
+                                                            "text":  "max"
+                                                        },
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "avg",
+                                                            "text":  "avg"
+                                                        },
+                                                        {
+                                                            "selected":  false,
+                                                            "value":  "med",
+                                                            "text":  "med"
+                                                        }
                                                     ],
-                                        "query":  {
-                                                      "query":  "metrics(k6_http_req_duration_)",
-                                                      "refId":  "PrometheusVariableQueryEditor-VariableQuery"
-                                                  },
-                                        "refresh":  2,
-                                        "regex":  "/http_req_duration_(min|max|count|sum|avg|med|p[0-9]+)/g",
+                                        "query":  "p90,p95,p99,min,max,avg,med",
                                         "skipUrlSync":  false,
-                                        "sort":  2,
-                                        "type":  "query"
+                                        "type":  "custom"
                                     },
                                     {
                                         "datasource":  {

@@ -40,7 +40,8 @@ services:
     entrypoint: [ "tail", "-f", "/dev/null" ]
     environment:
       - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
-      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false
+      - K6_PROMETHEUS_RW_TREND_STATS=p(90),p(95),p(99),min,max,avg,med
     volumes:
       # Mount the entire project so k6 can access tests
       - ../:/workspace
