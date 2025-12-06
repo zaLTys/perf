@@ -1,5 +1,3 @@
-import { open } from 'k6/fs';
-
 /**
  * Load environment-specific configuration.
  * 

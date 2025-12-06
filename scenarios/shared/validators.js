@@ -1,6 +1,5 @@
-import { open } from 'k6/fs';
-
-const schema = JSON.parse(open('scenarios/shared/config_schema.json'));
+// Note: Using built-in open() function (no import needed)
+const schema = JSON.parse(open('/workspace/scenarios/shared/config_schema.json'));
 
 /**
  * Enhanced validator with detailed error reporting

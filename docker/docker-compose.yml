@@ -24,19 +24,32 @@ services:
       # Example: GF_SECURITY_ADMIN_PASSWORD=your-secure-password
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-changeme}
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      # Auto-provisioning settings
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       - grafana-data:/var/lib/grafana
+      # Mount provisioning configurations
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
       - prometheus
 
   k6:
     image: grafana/k6:latest
     container_name: k6
-    entrypoint: ["tail", "-f", "/dev/null"]
+    entrypoint: [ "tail", "-f", "/dev/null" ]
     environment:
       - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    volumes:
+      # Mount the entire project so k6 can access tests
+      - ../:/workspace
+    working_dir: /workspace
+    depends_on:
+      - prometheus
 
 volumes:
   prometheus-data:
   grafana-data:
+
 

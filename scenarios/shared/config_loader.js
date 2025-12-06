@@ -1,4 +1,5 @@
-import { open } from 'k6/fs';
+// Note: Using built-in open() function (no import needed)
+// open() is a global function in k6 for reading files
 import yaml from 'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.mjs';
 import { validateConfig } from './validators.js';
 import { applyEnvironmentOverrides, getCurrentEnvironment } from './environment.js';
