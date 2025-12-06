@@ -1,0 +1,17 @@
+test_name: "teamB_soak_endurance"
+
+base_url: "https://test-api.example.com"
+
+endpoints:
+  health: "/health"
+
+scenarios:
+  soak:
+    executor: "constant-arrival-rate"
+    rate: 10
+    timeUnit: "1s"
+    duration: "2h"
+
+thresholds:
+  http_req_duration:
+    - "p(95)<800"

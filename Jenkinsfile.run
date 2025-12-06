@@ -1,0 +1,66 @@
+pipeline {
+  agent any
+
+  parameters {
+    string(
+      name: 'TEST_NAME',
+      defaultValue: 'teamA_load_ramp_up',
+      description: 'Value of test_name in a config.yaml'
+    )
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+        sh 'chmod +x jenkins/*.sh'
+      }
+    }
+
+    stage('Discover scenario') {
+      steps {
+        script {
+          env.SCENARIO_FILE = sh(
+            script: "jenkins/find_scenario_by_test_name.sh ${params.TEST_NAME}",
+            returnStdout: true
+          ).trim()
+
+          env.TEST_JS = sh(
+            script: "dirname ${env.SCENARIO_FILE} | xargs -I{} echo {}/test.js",
+            returnStdout: true
+          ).trim()
+
+          echo "Using config: ${env.SCENARIO_FILE}"
+          echo "Using script: ${env.TEST_JS}"
+        }
+      }
+    }
+
+    stage('Run scenario (parallel-capable)') {
+      steps {
+        script {
+          def branches = [:]
+
+          branches[params.TEST_NAME] = {
+            sh """#!/bin/bash
+              set -euo pipefail
+              k6 run \
+                --out experimental-prometheus-rw \
+                -e SCENARIO_FILE="${env.SCENARIO_FILE}" \
+                "${env.TEST_JS}"
+            """
+          }
+
+          parallel branches
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Execution pipeline completed."
+    }
+  }
+}
