@@ -27,10 +27,10 @@ npm run docker:up
 
 ```bash
 # Using Docker (recommended)
-./scripts/run-test.sh teamA_load_ramp_up
+./scripts/run-test.sh teamA_load_weather_api
 
 # Or locally
-k6 run teams/teamA/load/ramp_up/test.js
+k6 run --tag testid=teamA_load_weather_api teams/teamA/load/weather_api/test.js
 ```
 
 **Expected Output:**
@@ -48,12 +48,12 @@ k6 run teams/teamA/load/ramp_up/test.js
    /          \   |  |\  \ |  (‾)  |
   / __________ \  |__| \__\ \_____/ .io
 
-  execution: local
-     script: teams/teamA/load/ramp_up/test.js
+     execution: local
+     script: teams/teamA/load/weather_api/test.js
      output: prometheus (http://prometheus:9090/api/v1/write)
 
-  scenarios: (100.00%) 1 scenario, 20 max VUs, 7m0s max duration
-           ✓ ramp: 0 looping VUs for 7m0s
+  scenarios: (100.00%) 1 scenario, 20 max VUs, 4m30s max duration
+           ✓ weather_load: 0 looping VUs for 4m30s
 
      ✓ http_req_duration...........: avg=245ms min=120ms med=230ms max=890ms p(95)=450ms
      ✓ http_req_failed.............: 0.00% ✓ 0%
@@ -69,7 +69,7 @@ k6 run teams/teamA/load/ramp_up/test.js
 - **Grafana**: http://localhost:3000 (admin/changeme)
 - **Prometheus**: http://localhost:9090
 
-The k6 dashboard is automatically provisioned in Grafana.
+The k6 dashboard is automatically provisioned in Grafana. Use the **testid** filter at the top to select your test by name (e.g., `teamA_load_weather_api`).
 
 ## Project Structure
 
@@ -110,16 +110,17 @@ find teams -name test.js
 
 ```bash
 # Basic run
-k6 run teams/teamA/load/ramp_up/test.js
+k6 run --tag testid=teamA_load_weather_api teams/teamA/load/weather_api/test.js
 
 # With environment override
-k6 run -e K6_ENV=staging teams/teamA/load/ramp_up/test.js
+k6 run --tag testid=teamA_load_weather_api -e K6_ENV=staging teams/teamA/load/weather_api/test.js
 
 # With custom retry settings
 k6 run \
+  --tag testid=teamA_load_weather_api \
   -e HTTP_RETRY_MAX_ATTEMPTS=5 \
   -e HTTP_RETRY_INITIAL_DELAY=200 \
-  teams/teamA/load/ramp_up/test.js
+  teams/teamA/load/weather_api/test.js
 ```
 
 ### Expected Test Output
@@ -191,7 +192,7 @@ export default function () {
 # Validate (runs for 1 second with 0 VUs to check syntax)
 k6 run --duration 1s --vus 0 teams/yourTeam/load/my_test/test.js
 
-# Run
+# Run (test name will appear in Grafana filter)
 ./scripts/run-test.sh yourTeam_load_my_test
 ```
 

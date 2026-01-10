@@ -19,5 +19,6 @@ echo "Running TEST_NAME=$TEST_NAME"
 echo "  Script: $TEST_JS"
 
 k6 run \
+  --tag testid="$TEST_NAME" \
   --out experimental-prometheus-rw \
   "$TEST_JS"

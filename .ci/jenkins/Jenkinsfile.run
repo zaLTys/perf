@@ -4,8 +4,8 @@ pipeline {
   parameters {
     string(
       name: 'TEST_NAME',
-      defaultValue: 'teamA_load_ramp_up',
-      description: 'Value of test_name in the test.js file'
+      defaultValue: 'teamA_load_weather_api',
+      description: 'Test name in format: teamName_testType_testName (e.g., teamA_load_weather_api)'
     )
   }
 
@@ -40,6 +40,7 @@ pipeline {
             sh """#!/bin/bash
               set -euo pipefail
               k6 run \
+                --tag testid="${params.TEST_NAME}" \
                 --out experimental-prometheus-rw \
                 "${env.TEST_JS}"
             """

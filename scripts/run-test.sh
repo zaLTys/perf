@@ -44,12 +44,16 @@ fi
 echo "✓ Found test script: $TEST_JS"
 echo ""
 
+# Extract test name for Prometheus tag (use the original TEST_NAME input)
+TEST_ID="${TEST_NAME}"
+
 # Run the test
 echo "▶️  Starting k6 test..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 docker exec k6 k6 run \
+    --tag testid="$TEST_ID" \
     --out experimental-prometheus-rw \
     "$TEST_JS"
 
