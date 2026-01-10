@@ -1,241 +1,171 @@
-# k6 Performance PoC
+# Performance Testing Framework
 
-This repository is a proof-of-concept performance testing framework built around k6.
-
-## Key Features
-
-- **Multi-team monorepo** - Tests are organized by team under `teams/`
-- **Config-driven** - Tests use inline JavaScript configuration
-- **Environment support** - Run tests against dev, staging, or prod
-- **HTTP client with retry** - Automatic retries with exponential backoff
-- **Shared utilities** - Reusable code for HTTP, auth, validation
-- **CI/CD ready** - Jenkins pipelines for validation and execution
-- **Observability** - Prometheus + Grafana for metrics
-
-## Prerequisites
-
-- [k6](https://k6.io/docs/get-started/installation/) v0.45.0+
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose (for local metrics)
-- [Node.js](https://nodejs.org/) v16+ (optional, for npm scripts)
+Multi-team monorepo for k6 performance testing with shared utilities, CI/CD integration, and observability.
 
 ## Quick Start
 
-### 1. Clone and Setup
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+- [k6](https://k6.io/docs/get-started/installation/) v0.45.0+ (optional, Docker recommended)
+
+### Setup
 
 ```bash
+# Clone repository
 git clone <repository-url>
-cd k6-performance-poc
+cd perf
 
-# Create environment file from template
-cp .env.example .env
-
-# Edit .env with your configuration
-# Set GF_SECURITY_ADMIN_PASSWORD to a secure password
-```
-
-### 2. Start Observability Stack
-
-```bash
-# Using npm
+# Start observability stack
 npm run docker:up
+# Or: cd docker && docker-compose up -d
 
-# Or using docker-compose directly
-cd docker
-docker-compose up -d
-
-# Access Grafana at http://localhost:3000
-# Access Prometheus at http://localhost:9090
+# Wait ~15 seconds for Grafana to initialize
 ```
 
-### 3. Run a Test Locally
+### Run Your First Test
 
 ```bash
-# Basic usage
+# Using Docker (recommended)
+./scripts/run-test.sh teamA_load_ramp_up
+
+# Or locally
+k6 run teams/teamA/load/ramp_up/test.js
+```
+
+**Expected Output:**
+```
+🚀 Running k6 test: teamA_load_ramp_up
+📁 Finding test script...
+✓ Found test script: teams/teamA/load/ramp_up/test.js
+
+▶️  Starting k6 test...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+  execution: local
+     script: teams/teamA/load/ramp_up/test.js
+     output: prometheus (http://prometheus:9090/api/v1/write)
+
+  scenarios: (100.00%) 1 scenario, 20 max VUs, 7m0s max duration
+           ✓ ramp: 0 looping VUs for 7m0s
+
+     ✓ http_req_duration...........: avg=245ms min=120ms med=230ms max=890ms p(95)=450ms
+     ✓ http_req_failed.............: 0.00% ✓ 0%
+     ✓ http_reqs..................: 420 7.0/s
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Test completed!
+📊 View results in Grafana: http://localhost:3000
+```
+
+### View Results
+
+- **Grafana**: http://localhost:3000 (admin/changeme)
+- **Prometheus**: http://localhost:9090
+
+The k6 dashboard is automatically provisioned in Grafana.
+
+## Project Structure
+
+```
+perf/
+├── teams/                    # Team-specific tests
+│   └── [team-name]/
+│       └── [test-type]/      # load, smoke, spike, stress, soak
+│           └── [test-name]/
+│               └── test.js
+├── shared/                   # Shared utilities
+│   ├── http_client.js        # HTTP client with retry
+│   ├── config_loader.js      # Config loader & validator
+│   ├── validators.js         # Validation helpers
+│   └── auth/                 # Authentication helpers
+├── scripts/                  # Local development scripts
+│   └── run-test.sh
+├── .ci/                      # CI/CD configuration
+│   └── jenkins/              # Jenkins pipelines
+├── docker/                   # Observability stack
+│   └── docker-compose.yml
+└── README.md
+```
+
+## Running Tests
+
+### Using Docker (Recommended)
+
+```bash
+# Run specific test
+./scripts/run-test.sh teamA_load_ramp_up
+
+# List available tests
+find teams -name test.js
+```
+
+### Using k6 Directly
+
+```bash
+# Basic run
 k6 run teams/teamA/load/ramp_up/test.js
 
 # With environment override
-k6 run \
-  -e K6_ENV=staging \
-  teams/teamA/load/ramp_up/test.js
+k6 run -e K6_ENV=staging teams/teamA/load/ramp_up/test.js
 
-# With retry configuration
+# With custom retry settings
 k6 run \
   -e HTTP_RETRY_MAX_ATTEMPTS=5 \
   -e HTTP_RETRY_INITIAL_DELAY=200 \
   teams/teamA/load/ramp_up/test.js
 ```
 
-## Project Structure
+### Expected Test Output
 
 ```
-k6-performance-poc/
-├── teams/                      # Team-specific tests
-│   └── [team-name]/
-│       └── [test-type]/        # load, smoke, spike, stress, soak
-│           └── [test-name]/
-│               └── test.js     # Test script with inline configuration
-├── scenarios/
-│   └── shared/                 # Shared utilities
-│       ├── config_loader.js    # Config loader and validator
-│       ├── environment.js      # Environment overrides
-│       ├── http_client.js      # HTTP wrapper with retry
-│       ├── validators.js       # Config validation
-│       └── auth/               # Auth helpers
-├── metrics/
-│   └── prometheus.js           # Custom metrics
-├── docker/                     # Observability stack
-│   ├── docker-compose.yml
-│   └── prometheus/
-├── jenkins/                    # CI/CD scripts
-│   ├── Jenkinsfile.validation
-│   └── Jenkinsfile.run
-└── .env.example               # Environment template
+✓ Loaded config: teamA_load_ramp_up (environment: dev)
+  Base URL: https://test-api.example.com
+
+     ✓ http_req_duration...........: avg=245ms min=120ms med=230ms max=890ms p(95)=450ms
+     ✓ http_req_failed.............: 0.00% ✓ 0%
+     ✓ http_reqs..................: 420 7.0/s
+     ✓ vus.........................: 20   min=0 max=20
+     ✓ vus_max.....................: 20   min=20 max=20
+
+     checks.........................: 100.00% ✓ 420 ✗ 0
 ```
 
-## Configuration Guide
+## Creating a Test
 
-### Test Configuration (Inline in test.js)
+### 1. Create Directory
 
-Tests define their configuration directly in the test file using JavaScript:
+```bash
+mkdir -p teams/yourTeam/load/my_test
+cd teams/yourTeam/load/my_test
+```
+
+### 2. Create test.js
 
 ```javascript
-import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
+import { sleep } from 'k6';
+import { get } from '../../../../shared/http_client.js';
+import { loadConfig } from '../../../../shared/config_loader.js';
 
 const config = loadConfig({
-  test_name: "teamA_load_ramp_up",
-  base_url: "https://test-api.example.com",
-  
-  // Environment-specific overrides
-  environments: {
-    dev: {
-      base_url: "https://dev-api.example.com"
-    },
-    staging: {
-      base_url: "https://staging-api.example.com"
-    },
-    prod: {
-      base_url: "https://api.example.com"
-    }
-  },
-  
+  test_name: "yourTeam_load_my_test",
+  base_url: "https://api.example.com",
   endpoints: {
-    health: "/health",
-    users: "/api/v1/users"
+    health: "/health"
   },
-  
   scenarios: {
     ramp: {
       executor: "ramping-vus",
       stages: [
-        { duration: "1m", target: 20 },
-        { duration: "5m", target: 20 },
-        { duration: "1m", target: 0 }
-      ]
-    }
-  },
-  
-  thresholds: {
-    http_req_duration: ["p(95)<500"],
-    success_rate: ["rate>0.99"]
-  }
-});
-
-export const options = {
-  scenarios: config.scenarios,
-  thresholds: config.thresholds
-};
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `K6_ENV` | Target environment (dev/staging/prod) | `dev` |
-| `HTTP_RETRY_MAX_ATTEMPTS` | Max retry attempts | `3` |
-| `HTTP_RETRY_INITIAL_DELAY` | Initial delay in ms | `100` |
-| `HTTP_RETRY_MAX_DELAY` | Max delay in ms | `5000` |
-| `HTTP_RETRY_BACKOFF` | Backoff multiplier | `2` |
-| `AUTH_TOKEN` | Bearer token for API auth | - |
-| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | `changeme` |
-
-## Using the Enhanced HTTP Client
-
-The HTTP client now supports all methods with automatic retry:
-
-```javascript
-import { get, post, put, del, validators } from '../../scenarios/shared/http_client.js';
-
-export default function () {
-  // GET request
-  const getRes = get(config.base_url, '/api/users');
-  
-  // POST with body
-  const postRes = post(
-    config.base_url,
-    '/api/users',
-    { name: 'John', email: 'john@example.com' }
-  );
-  
-  // PUT with custom headers
-  const putRes = put(
-    config.base_url,
-    '/api/users/123',
-    { name: 'Jane' },
-    { 'X-Custom-Header': 'value' }
-  );
-  
-  // DELETE
-  const delRes = del(config.base_url, '/api/users/123');
-  
-  // Response validation
-  if (validators.isSuccess(getRes)) {
-    const data = validators.parseJson(getRes);
-    console.log('Users:', data);
-  }
-}
-```
-
-## Jenkins Integration
-
-### Validation Pipeline (`Jenkinsfile.validation`)
-- Triggered on: Pull requests / branch updates
-- Validates: Config schema, k6 dry-run
-
-### Execution Pipeline (`Jenkinsfile.run`)
-- Triggered: Manually or via API
-- Parameter: `TEST_NAME` (e.g., `teamA_load_ramp_up`)
-- Outputs: Prometheus metrics
-
-Example:
-```bash
-# Trigger via Jenkins API or UI with parameter:
-TEST_NAME=teamA_load_ramp_up
-```
-
-## Adding New Tests
-
-### 1. Create Directory Structure
-```bash
-mkdir -p teams/teamC/load/my_test
-```
-
-### 2. Create test.js with inline configuration
-```javascript
-import { sleep } from 'k6';
-import { get } from '../../../../scenarios/shared/http_client.js';
-import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
-
-const config = loadConfig({
-  test_name: "teamC_load_my_test",
-  base_url: "https://api.example.com",
-  endpoints: {
-    endpoint1: "/path"
-  },
-  scenarios: {
-    my_scenario: {
-      executor: "ramping-vus",
-      stages: [
-        { duration: "30s", target: 10 }
+        { duration: "30s", target: 10 },
+        { duration: "1m", target: 10 },
+        { duration: "30s", target: 0 }
       ]
     }
   },
@@ -246,46 +176,118 @@ const config = loadConfig({
 
 export const options = {
   scenarios: config.scenarios,
-  thresholds: config.thresholds || {},
+  thresholds: config.thresholds
 };
 
 export default function () {
-  get(config.base_url, config.endpoints.endpoint1);
+  get(config.base_url, config.endpoints.health);
   sleep(1);
 }
 ```
 
+### 3. Validate & Run
+
+```bash
+# Validate
+k6 run --dry-run teams/yourTeam/load/my_test/test.js
+
+# Run
+./scripts/run-test.sh yourTeam_load_my_test
+```
+
+## Using Shared Utilities
+
+### HTTP Client
+
+```javascript
+import { get, post, put, del, validators } from '../../../../shared/http_client.js';
+
+export default function () {
+  // GET request
+  const res = get(config.base_url, '/api/users');
+  
+  // POST with body
+  const createRes = post(config.base_url, '/api/users', { name: 'John' });
+  
+  // Response validation
+  if (validators.isSuccess(res)) {
+    const data = validators.parseJson(res);
+    console.log('Users:', data);
+  }
+}
+```
+
+### Environment Configuration
+
+```javascript
+const config = loadConfig({
+  base_url: "https://default-api.example.com",
+  environments: {
+    dev: { base_url: "https://dev-api.example.com" },
+    staging: { base_url: "https://staging-api.example.com" },
+    prod: { base_url: "https://api.example.com" }
+  }
+});
+```
+
+Run with: `k6 run -e K6_ENV=staging teams/.../test.js`
+
+## CI/CD
+
+### Jenkins Pipelines
+
+**Location:** `.ci/jenkins/`
+
+- **Validation Pipeline**: Runs on PRs, validates all tests
+- **Execution Pipeline**: Run tests via Jenkins UI with `TEST_NAME` parameter
+
+```bash
+# Trigger via Jenkins API
+TEST_NAME=teamA_load_ramp_up
+```
+
 ## Troubleshooting
 
-### Tests fail with "config validation failed"
-- Ensure all required fields are present: `test_name`, `base_url`, `scenarios`
-- Check that `test_name` contains only alphanumeric characters, underscores, and hyphens
-- Verify `base_url` starts with `http://` or `https://`
+### Docker container not running
+```bash
+cd docker && docker-compose up -d
+```
 
-### Retry not working
-- Check `HTTP_RETRY_MAX_ATTEMPTS` is set > 1
-- Verify error status codes are retryable (408, 429, 500, 502, 503, 504)
-- Check console output for retry logs
+### No metrics in Grafana
+1. Verify Prometheus: http://localhost:9090
+2. Check test uses `--out experimental-prometheus-rw`
+3. Wait 10-20 seconds after test starts
+4. Refresh Grafana dashboard
 
-### Environment overrides not applied
-- Ensure `K6_ENV` is set (defaults to 'dev')
-- Verify `environments` section exists in your config object
-- Check console output for loaded environment
+### Config validation failed
+- Ensure required fields: `test_name`, `base_url`, `scenarios`
+- `test_name` must be alphanumeric with underscores/hyphens only
+- `base_url` must start with `http://` or `https://`
 
-### Prometheus metrics not appearing
-- Ensure docker stack is running: `docker-compose ps`
-- Check Prometheus remote write is enabled
-- Verify k6 is using `--out experimental-prometheus-rw`
+### Test not found
+```bash
+# List available tests
+find teams -name test.js
+
+# Check test name format: teamName_testType_testName
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `K6_ENV` | Target environment (dev/staging/prod) | `dev` |
+| `HTTP_RETRY_MAX_ATTEMPTS` | Max retry attempts | `3` |
+| `HTTP_RETRY_INITIAL_DELAY` | Initial delay in ms | `100` |
+| `AUTH_TOKEN` | Bearer token for API auth | - |
 
 ## Contributing
 
 1. Create feature branch
 2. Add/modify tests in appropriate team folder
-3. Validate locally: `k6 run --dry-run ...`
-4. Submit PR (validation pipeline runs automatically)
-5. After approval, tests are available for execution
+3. Validate: `k6 run --dry-run teams/.../test.js`
+4. Submit PR (validation runs automatically)
 
 ## License
 
 MIT
-

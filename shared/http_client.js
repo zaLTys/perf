@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { sleep } from 'k6';
-import { trackMetrics } from '../../metrics/prometheus.js';
+import { trackMetrics } from './metrics/prometheus.js';
 
 /**
  * Default retry configuration

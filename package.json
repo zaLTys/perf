@@ -7,7 +7,7 @@
         "docker:up": "cd docker && docker-compose up -d",
         "docker:down": "cd docker && docker-compose down",
         "docker:logs": "cd docker && docker-compose logs -f",
-        "test": "./run-test.sh",
+        "test": "./scripts/run-test.sh",
         "test:local": "k6 run teams/teamA/load/ramp_up/test.js",
         "validate:all": "find teams -type f -name 'test.js' -exec k6 run --dry-run {} \\;",
         "help": "echo 'Available scripts: docker:up, docker:down, test, test:local, validate:all'"

@@ -8,7 +8,7 @@ if [ -z "$TEST_NAME" ]; then
   exit 1
 fi
 
-TEST_JS=$(jenkins/find_scenario_by_test_name.sh "$TEST_NAME")
+TEST_JS=$(.ci/jenkins/scripts/find_scenario_by_test_name.sh "$TEST_NAME")
 
 if [ ! -f "$TEST_JS" ]; then
   echo "Test JS not found: $TEST_JS" >&2

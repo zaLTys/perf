@@ -11,7 +11,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        sh 'chmod +x jenkins/*.sh'
+        sh 'chmod +x .ci/jenkins/scripts/*.sh'
       }
     }
 

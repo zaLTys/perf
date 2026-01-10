@@ -1,0 +1,43 @@
+name: Generate base load
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to run the test against"
+        required: true
+        default: "sandbox"
+        type: choice
+        options:
+          - test
+          - sandbox
+
+permissions:
+  contents: read    
+  id-token: write
+
+jobs:
+  run-k6:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    strategy:
+      matrix:
+        testfile: [loadTests/baseLoad.js]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run K6 Composite Action
+        uses: ./.github/actions/k6-performance-test
+        with:
+          testfile: ${{ matrix.testfile }}
+          aws_access_key_id: ${{ secrets.AWS_PROMETHEUS_IAM_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_PROMETHEUS_IAM_ACCESS_KEY_SECRET }}
+          aws_prometheus_workspace: ${{ secrets.AWS_PROMETHEUS_WORKSPACE }}
+          auth_url: ${{ vars.AUTH_URL }}
+          client_id: ${{ vars.CLIENT_ID }}
+          client_secret: ${{ secrets.CLIENT_SECRET }}
+          api_url: ${{ vars.API_URL }}
+          slack_webhook_url: "${{ secrets.SLACK_WEBHOOK_URL }}"
+          environment: ${{ inputs.environment }}

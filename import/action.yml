@@ -1,0 +1,103 @@
+name: 'Run K6 Performance Test'
+description: 'Run a K6 performance test in Docker with Prometheus remote write and Slack notifications'
+
+inputs:
+  testfile:
+    description: 'The K6 test file to run'
+    required: true
+  aws_access_key_id:
+    required: true
+  aws_secret_access_key:
+    required: true
+  aws_prometheus_workspace:
+    required: true
+  auth_url:
+    required: true
+  client_id:
+    required: true
+  client_secret:
+    required: true
+  slack_webhook_url:
+    required: true
+  api_url:
+    required: true
+  environment:
+    required: true
+  adyen_auth_username:
+    description: 'Adyen authentication username for callbacks tests'
+    required: false
+  adyen_auth_password:
+    description: 'Adyen authentication password for callbacks tests'
+    required: false
+  adyen_hmac_key:
+    description: 'Adyen HMAC key for callbacks tests'
+    required: false
+  webhook_url:
+    description: 'Webhook URL for callback tests'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Create and Verify Docker Network
+      shell: bash
+      run: |
+        docker network create k6-network || echo "Network already exists"
+
+    - name: Start aws-sigv4-proxy Service
+      shell: bash
+      run: |
+        docker run -d --network k6-network \
+          --name aws-sigv4-proxy-instance \
+          --env AWS_ACCESS_KEY_ID="${{ inputs.aws_access_key_id }}" \
+          --env AWS_SECRET_ACCESS_KEY="${{ inputs.aws_secret_access_key }}" \
+          -p 8080:8080 \
+          public.ecr.aws/aws-observability/aws-sigv4-proxy:latest -v \
+          --host aps-workspaces.eu-central-1.amazonaws.com --name aps --region eu-central-1
+
+    - name: Notify Slack Test Start
+      shell: bash
+      run: |
+        PAYLOAD="{
+          \"text\": \"Starting performance tests :progress_bar:\nEnvironment: ${{ inputs.environment }}\nTest file: ${{ inputs.testfile }}\"
+        }"
+        curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" ${{ inputs.slack_webhook_url }}
+
+    - name: Run K6 Tests with Docker
+      shell: bash
+      run: |
+        docker run --network k6-network \
+          -v ${{ github.workspace }}:/workspace \
+          grafana/k6 run \
+          --env K6_PROMETHEUS_RW_SERVER_URL="http://aws-sigv4-proxy-instance:8080/workspaces/${{ inputs.aws_prometheus_workspace }}/api/v1/remote_write" \
+          --env K6_PROMETHEUS_RW_TREND_STATS="p(95),p(99),avg,med,max,count" \
+          --env K6_PROMETHEUS_RW_STALE_MARKERS="true" \
+          --env K6_PROMETHEUS_RW_PUSH_INTERVAL="1m" \
+          --env AUTH_URL="${{ inputs.auth_url }}" \
+          --env CLIENT_ID="${{ inputs.client_id }}" \
+          --env CLIENT_SECRET="${{ inputs.client_secret }}" \
+          --env API_URL="${{ inputs.api_url }}" \
+          ${{ inputs.adyen_auth_username && format('--env ADYEN_AUTHENTICATION_USERNAME={0}', inputs.adyen_auth_username) || '' }} \
+          ${{ inputs.adyen_auth_password && format('--env ADYEN_AUTHENTICATION_PASSWORD={0}', inputs.adyen_auth_password) || '' }} \
+          ${{ inputs.adyen_hmac_key && format('--env ADYEN_HMACKEYS_SLICE={0}', inputs.adyen_hmac_key) || '' }} \
+          ${{ inputs.webhook_url && format('--env WEBHOOK_URL={0}', inputs.webhook_url) || '' }} \
+          -o experimental-prometheus-rw \
+          --summary-mode=full \
+          /workspace/${{ inputs.testfile }}
+
+    - name: Notify Slack Test Results
+      if: always()
+      shell: bash
+      run: |
+        if [[ "${{ job.status }}" == "failure" ]]; then
+          STATUS_MESSAGE="Performance Test Failed :x:"
+        else
+          STATUS_MESSAGE="Performance Test Finished Successfully :white_check_mark:"
+        fi
+        PAYLOAD="{
+          \"text\": \"$STATUS_MESSAGE\nEnvironment: ${{ inputs.environment }}\nTest file: ${{ inputs.testfile }}\"
+        }"
+        curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" ${{ inputs.slack_webhook_url }}

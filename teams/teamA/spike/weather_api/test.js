@@ -1,5 +1,5 @@
 import { sleep, check } from 'k6';
-import { get, validators } from '../../../../scenarios/shared/http_client.js';
+import { get, validators } from '../../../../shared/http_client.js';
 
 // Configuration
 const BASE_URL = __ENV.BASE_URL || 'https://api.open-meteo.com';

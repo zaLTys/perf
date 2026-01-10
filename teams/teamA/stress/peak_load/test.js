@@ -1,5 +1,5 @@
 import { sleep } from 'k6';
-import { get } from '../../../../scenarios/shared/http_client.js';
+import { get } from '../../../../shared/http_client.js';
 
 // Configuration
 const BASE_URL = __ENV.BASE_URL || 'https://test-api.example.com';

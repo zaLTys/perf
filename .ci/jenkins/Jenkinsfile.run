@@ -14,7 +14,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        sh 'chmod +x jenkins/*.sh'
+        sh 'chmod +x .ci/jenkins/scripts/*.sh'
       }
     }
 
@@ -22,7 +22,7 @@ pipeline {
       steps {
         script {
           env.TEST_JS = sh(
-            script: "jenkins/find_scenario_by_test_name.sh ${params.TEST_NAME}",
+            script: ".ci/jenkins/scripts/find_scenario_by_test_name.sh ${params.TEST_NAME}",
             returnStdout: true
           ).trim()
 
