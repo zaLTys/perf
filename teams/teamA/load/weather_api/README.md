@@ -45,9 +45,7 @@ The test simulates multiple users requesting weather forecasts for various citie
 
 ```bash
 # From project root
-k6 run \
-  -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml \
-  teams/teamA/load/weather_api/test.js
+k6 run teams/teamA/load/weather_api/test.js
 ```
 
 ### With Environment Override
@@ -56,7 +54,6 @@ k6 run \
 # Run against specific environment (all use same API in this case)
 k6 run \
   -e K6_ENV=dev \
-  -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml \
   teams/teamA/load/weather_api/test.js
 ```
 
@@ -66,7 +63,6 @@ k6 run \
 # Send metrics to Prometheus (requires docker stack running)
 k6 run \
   --out experimental-prometheus-rw \
-  -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml \
   teams/teamA/load/weather_api/test.js
 ```
 
@@ -77,7 +73,6 @@ k6 run \
 k6 run \
   -e HTTP_RETRY_MAX_ATTEMPTS=5 \
   -e HTTP_RETRY_INITIAL_DELAY=200 \
-  -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml \
   teams/teamA/load/weather_api/test.js
 ```
 
@@ -123,13 +118,17 @@ Example:
 
 ### Change Load Pattern
 
-Edit `config.yaml` stages:
-```yaml
-stages:
-  - duration: "1m"
-    target: 50  # More users
-  - duration: "5m"
-    target: 50  # Longer sustain period
+Edit `test.js` scenarios configuration:
+```javascript
+scenarios: {
+  ramp: {
+    executor: "ramping-vus",
+    stages: [
+      { duration: "1m", target: 50 },  // More users
+      { duration: "5m", target: 50 }   // Longer sustain period
+    ]
+  }
+}
 ```
 
 ### Add More Cities
@@ -158,7 +157,7 @@ sleep(Math.random() * 5 + 2); // 2-7 seconds instead of 1-3
 
 ### Thresholds fail
 - Normal for first run if network is slow
-- Adjust thresholds in `config.yaml` to match your network conditions
+- Adjust thresholds in `test.js` config to match your network conditions
 - The API typically responds in 100-500ms from most locations
 
 ### Rate limiting

@@ -1,15 +1,29 @@
 import { sleep, check } from 'k6';
 import { get, validators } from '../../../../scenarios/shared/http_client.js';
-import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
-import { getCurrentEnvironment } from '../../../../scenarios/shared/environment.js';
 
-const scenarioFile = __ENV.SCENARIO_FILE || 'teams/teamA/load/weather_api/config.yaml';
-const config = loadConfig(scenarioFile);
+// Configuration
+const BASE_URL = __ENV.BASE_URL || 'https://api.open-meteo.com';
+const FORECAST_ENDPOINT = '/v1/forecast';
 
 export const options = {
-    scenarios: config.scenarios,
-    thresholds: config.thresholds || {},
-    gracefulStop: '30s',
+  scenarios: {
+    weather_load: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '30s', target: 10 },
+        { duration: '1m', target: 10 },
+        { duration: '30s', target: 20 },
+        { duration: '2m', target: 20 },
+        { duration: '30s', target: 0 },
+      ],
+    },
+  },
+  thresholds: {
+    http_req_duration: ['p(90)<1000', 'p(95)<2000', 'p(99)<3000'],
+    http_req_failed: ['rate<0.01'],
+  },
+  gracefulStop: '30s',
 };
 
 // Test data - various cities around the world
@@ -27,9 +41,10 @@ const cities = [
 ];
 
 export function setup() {
+    const env = __ENV.K6_ENV || 'dev';
     console.log(`\n🌤️  Starting Weather API Load Test`);
-    console.log(`Environment: ${getCurrentEnvironment()}`);
-    console.log(`Base URL: ${config.base_url}`);
+    console.log(`Environment: ${env}`);
+    console.log(`Base URL: ${BASE_URL}`);
     console.log(`Testing ${cities.length} cities`);
     console.log(`Starting test at: ${new Date().toISOString()}\n`);
 
@@ -52,11 +67,11 @@ export default function (data) {
         `&timezone=auto` +
         `&forecast_days=3`;
 
-    const endpoint = `${config.endpoints.forecast}?${queryString}`;
+    const endpoint = `${FORECAST_ENDPOINT}?${queryString}`;
 
     // Make the request with custom headers
     const response = get(
-        config.base_url,
+        BASE_URL,
         endpoint,
         {
             'Accept': 'application/json',

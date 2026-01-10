@@ -1,5 +1,15 @@
-// Note: Using built-in open() function (no import needed)
-const schema = JSON.parse(open('/workspace/scenarios/shared/config_schema.json'));
+// Schema definition for validation
+const schema = {
+  required: ['test_name', 'base_url', 'scenarios'],
+  properties: {
+    test_name: { type: 'string' },
+    base_url: { type: 'string' },
+    endpoints: { type: 'object' },
+    scenarios: { type: 'object' },
+    thresholds: { type: 'object' },
+    auth: { type: 'object' }
+  }
+};
 
 /**
  * Enhanced validator with detailed error reporting

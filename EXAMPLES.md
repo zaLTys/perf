@@ -2,47 +2,7 @@
 
 This example shows how to use the new environment configuration and enhanced HTTP client.
 
-## Example: config.yaml with Environment Overrides
-
-```yaml
-test_name: "teamA_load_ramp_up_example"
-
-# Default base URL
-base_url: "https://test-api.example.com"
-
-# Environment-specific overrides
-environments:
-  dev:
-    base_url: "https://dev-api.example.com"
-  staging:
-    base_url: "https://staging-api.example.com"
-  prod:
-    base_url: "https://api.example.com"
-
-endpoints:
-  health: "/health"
-  users: "/api/v1/users"
-  posts: "/api/v1/posts"
-
-scenarios:
-  ramp:
-    executor: "ramping-vus"
-    stages:
-      - duration: "1m"
-        target: 20
-      - duration: "5m"
-        target: 20
-      - duration: "1m"
-        target: 0
-
-thresholds:
-  http_req_duration:
-    - "p(95)<500"
-  success_rate:
-    - "rate>0.99"
-```
-
-## Example: test.js Using All HTTP Methods
+## Example: test.js with Inline Configuration and Environment Overrides
 
 ```javascript
 import { sleep } from 'k6';
@@ -50,8 +10,47 @@ import { get, post, put, del, validators } from '../../../../scenarios/shared/ht
 import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
 import { getCurrentEnvironment } from '../../../../scenarios/shared/environment.js';
 
-const scenarioFile = __ENV.SCENARIO_FILE || 'teams/teamA/load/ramp_up/config.yaml';
-const config = loadConfig(scenarioFile);
+const config = loadConfig({
+  test_name: "teamA_load_ramp_up_example",
+  
+  // Default base URL
+  base_url: "https://test-api.example.com",
+  
+  // Environment-specific overrides
+  environments: {
+    dev: {
+      base_url: "https://dev-api.example.com"
+    },
+    staging: {
+      base_url: "https://staging-api.example.com"
+    },
+    prod: {
+      base_url: "https://api.example.com"
+    }
+  },
+  
+  endpoints: {
+    health: "/health",
+    users: "/api/v1/users",
+    posts: "/api/v1/posts"
+  },
+  
+  scenarios: {
+    ramp: {
+      executor: "ramping-vus",
+      stages: [
+        { duration: "1m", target: 20 },
+        { duration: "5m", target: 20 },
+        { duration: "1m", target: 0 }
+      ]
+    }
+  },
+  
+  thresholds: {
+    http_req_duration: ["p(95)<500"],
+    success_rate: ["rate>0.99"]
+  }
+});
 
 export const options = {
   scenarios: config.scenarios,
@@ -126,14 +125,11 @@ export function teardown(data) {
 
 ```bash
 # Run against dev (default)
-k6 run \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
-  teams/teamA/load/ramp_up/test.js
+k6 run teams/teamA/load/ramp_up/test.js
 
 # Run against staging
 k6 run \
   -e K6_ENV=staging \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
   teams/teamA/load/ramp_up/test.js
 
 # Run against prod with custom retry settings
@@ -141,13 +137,11 @@ k6 run \
   -e K6_ENV=prod \
   -e HTTP_RETRY_MAX_ATTEMPTS=5 \
   -e HTTP_RETRY_INITIAL_DELAY=200 \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
   teams/teamA/load/ramp_up/test.js
 
 # With authentication
 k6 run \
   -e K6_ENV=staging \
   -e AUTH_TOKEN=your-bearer-token-here \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
   teams/teamA/load/ramp_up/test.js
 ```

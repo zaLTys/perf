@@ -5,7 +5,7 @@ pipeline {
     string(
       name: 'TEST_NAME',
       defaultValue: 'teamA_load_ramp_up',
-      description: 'Value of test_name in a config.yaml'
+      description: 'Value of test_name in the test.js file'
     )
   }
 
@@ -21,17 +21,11 @@ pipeline {
     stage('Discover scenario') {
       steps {
         script {
-          env.SCENARIO_FILE = sh(
+          env.TEST_JS = sh(
             script: "jenkins/find_scenario_by_test_name.sh ${params.TEST_NAME}",
             returnStdout: true
           ).trim()
 
-          env.TEST_JS = sh(
-            script: "dirname ${env.SCENARIO_FILE} | xargs -I{} echo {}/test.js",
-            returnStdout: true
-          ).trim()
-
-          echo "Using config: ${env.SCENARIO_FILE}"
           echo "Using script: ${env.TEST_JS}"
         }
       }
@@ -47,7 +41,6 @@ pipeline {
               set -euo pipefail
               k6 run \
                 --out experimental-prometheus-rw \
-                -e SCENARIO_FILE="${env.SCENARIO_FILE}" \
                 "${env.TEST_JS}"
             """
           }

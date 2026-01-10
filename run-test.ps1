@@ -10,25 +10,19 @@ param(
 Write-Host "🚀 Running k6 test: $TestName" -ForegroundColor Green
 Write-Host ""
 
-# Find the config file
-Write-Host "📁 Finding test configuration..." -ForegroundColor Cyan
-$configPath = docker exec k6 sh -c "grep -Rsl 'test_name: `"$TestName`"' /workspace/teams/ 2>/dev/null || true"
+# Find the test.js file
+Write-Host "📁 Finding test script..." -ForegroundColor Cyan
+$testJs = docker exec k6 sh -c "grep -Rsl `"test_name.*\\`"$TestName\\`"`" /workspace/teams/ --include='*.js' | head -1" 2>$null
 
-if ([string]::IsNullOrWhiteSpace($configPath)) {
+if ([string]::IsNullOrWhiteSpace($testJs)) {
     Write-Host "❌ No test found with test_name='$TestName'" -ForegroundColor Red
     Write-Host ""
     Write-Host "Available tests:" -ForegroundColor Yellow
-    docker exec k6 sh -c "find /workspace/teams -name 'config.yaml' -exec grep -H 'test_name:' {} \;"
+    docker exec k6 sh -c "grep -r 'test_name' /workspace/teams/ --include='*.js' | sed 's/:.*test_name.*:/:/' | head -20"
     exit 1
 }
 
-Write-Host "✓ Found config: $configPath" -ForegroundColor Green
-
-# Find the test.js file
-$testDir = docker exec k6 sh -c "dirname $configPath"
-$testJs = "$testDir/test.js"
-
-Write-Host "✓ Using test script: $testJs" -ForegroundColor Green
+Write-Host "✓ Found test script: $testJs" -ForegroundColor Green
 Write-Host ""
 
 # Run the test
@@ -38,7 +32,6 @@ Write-Host ""
 
 docker exec k6 k6 run `
     --out experimental-prometheus-rw `
-    -e SCENARIO_FILE=$configPath `
     $testJs
 
 Write-Host ""

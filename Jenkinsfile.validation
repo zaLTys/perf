@@ -15,40 +15,24 @@ pipeline {
       }
     }
 
-    stage('Validate YAML syntax') {
-      steps {
-        sh """#!/bin/bash
-          set -euo pipefail
-          echo "Validating YAML configs..."
-          # yq is used to parse each YAML; replace with your YAML tool if needed.
-          find teams -type f -name config.yaml -print0 | xargs -0 -n1 yq e >/dev/null
-        """
-      }
-    }
-
     stage('k6 dry-run validation (parallel)') {
       steps {
         script {
-          def cfgs = sh(
-            script: "find teams -type f -name config.yaml",
+          def testFiles = sh(
+            script: "find teams -type f -name test.js",
             returnStdout: true
           ).trim().split("\n")
 
           def branches = [:]
 
-          cfgs.each { cfg ->
-            def name = cfg.replaceAll('.*/', '').replaceAll('/config.yaml', '')
+          testFiles.each { testFile ->
+            def name = testFile.replaceAll('.*/', '').replaceAll('/test.js', '').replaceAll('.*/', '')
 
             branches[name] = {
-              def js = sh(
-                script: "dirname ${cfg} | xargs -I{} echo {}/test.js",
-                returnStdout: true
-              ).trim()
-
               sh """#!/bin/bash
                 set -euo pipefail
-                echo "Dry-run for ${cfg}"
-                k6 run --dry-run -e SCENARIO_FILE="${cfg}" "${js}"
+                echo "Dry-run for ${testFile}"
+                k6 run --dry-run "${testFile}"
               """
             }
           }

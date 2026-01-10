@@ -5,7 +5,7 @@ This repository is a proof-of-concept performance testing framework built around
 ## Key Features
 
 - **Multi-team monorepo** - Tests are organized by team under `teams/`
-- **Config-driven** - Tests use YAML for configuration
+- **Config-driven** - Tests use inline JavaScript configuration
 - **Environment support** - Run tests against dev, staging, or prod
 - **HTTP client with retry** - Automatic retries with exponential backoff
 - **Shared utilities** - Reusable code for HTTP, auth, validation
@@ -16,7 +16,6 @@ This repository is a proof-of-concept performance testing framework built around
 
 - [k6](https://k6.io/docs/get-started/installation/) v0.45.0+
 - [Docker](https://docs.docker.com/get-docker/) & Docker Compose (for local metrics)
-- [yq](https://github.com/mikefarah/yq) (for YAML validation)
 - [Node.js](https://nodejs.org/) v16+ (optional, for npm scripts)
 
 ## Quick Start
@@ -52,21 +51,17 @@ docker-compose up -d
 
 ```bash
 # Basic usage
-k6 run \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
-  teams/teamA/load/ramp_up/test.js
+k6 run teams/teamA/load/ramp_up/test.js
 
 # With environment override
 k6 run \
   -e K6_ENV=staging \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
   teams/teamA/load/ramp_up/test.js
 
 # With retry configuration
 k6 run \
   -e HTTP_RETRY_MAX_ATTEMPTS=5 \
   -e HTTP_RETRY_INITIAL_DELAY=200 \
-  -e SCENARIO_FILE=teams/teamA/load/ramp_up/config.yaml \
   teams/teamA/load/ramp_up/test.js
 ```
 
@@ -78,11 +73,10 @@ k6-performance-poc/
 │   └── [team-name]/
 │       └── [test-type]/        # load, smoke, spike, stress, soak
 │           └── [test-name]/
-│               ├── config.yaml # Test configuration
-│               └── test.js     # Test script
+│               └── test.js     # Test script with inline configuration
 ├── scenarios/
 │   └── shared/                 # Shared utilities
-│       ├── config_loader.js    # YAML config loader
+│       ├── config_loader.js    # Config loader and validator
 │       ├── environment.js      # Environment overrides
 │       ├── http_client.js      # HTTP wrapper with retry
 │       ├── validators.js       # Config validation
@@ -100,42 +94,56 @@ k6-performance-poc/
 
 ## Configuration Guide
 
-### Test Configuration (config.yaml)
+### Test Configuration (Inline in test.js)
 
-```yaml
-test_name: "teamA_load_ramp_up"
+Tests define their configuration directly in the test file using JavaScript:
 
-base_url: "https://test-api.example.com"
+```javascript
+import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
 
-# Environment-specific overrides
-environments:
-  dev:
-    base_url: "https://dev-api.example.com"
-  staging:
-    base_url: "https://staging-api.example.com"
-  prod:
-    base_url: "https://api.example.com"
+const config = loadConfig({
+  test_name: "teamA_load_ramp_up",
+  base_url: "https://test-api.example.com",
+  
+  // Environment-specific overrides
+  environments: {
+    dev: {
+      base_url: "https://dev-api.example.com"
+    },
+    staging: {
+      base_url: "https://staging-api.example.com"
+    },
+    prod: {
+      base_url: "https://api.example.com"
+    }
+  },
+  
+  endpoints: {
+    health: "/health",
+    users: "/api/v1/users"
+  },
+  
+  scenarios: {
+    ramp: {
+      executor: "ramping-vus",
+      stages: [
+        { duration: "1m", target: 20 },
+        { duration: "5m", target: 20 },
+        { duration: "1m", target: 0 }
+      ]
+    }
+  },
+  
+  thresholds: {
+    http_req_duration: ["p(95)<500"],
+    success_rate: ["rate>0.99"]
+  }
+});
 
-endpoints:
-  health: "/health"
-  users: "/api/v1/users"
-
-scenarios:
-  ramp:
-    executor: "ramping-vus"
-    stages:
-      - duration: "1m"
-        target: 20
-      - duration: "5m"
-        target: 20
-      - duration: "1m"
-        target: 0
-
-thresholds:
-  http_req_duration:
-    - "p(95)<500"
-  success_rate:
-    - "rate>0.99"
+export const options = {
+  scenarios: config.scenarios,
+  thresholds: config.thresholds
+};
 ```
 
 ### Environment Variables
@@ -191,7 +199,7 @@ export default function () {
 
 ### Validation Pipeline (`Jenkinsfile.validation`)
 - Triggered on: Pull requests / branch updates
-- Validates: YAML syntax, config schema, k6 dry-run
+- Validates: Config schema, k6 dry-run
 
 ### Execution Pipeline (`Jenkinsfile.run`)
 - Triggered: Manually or via API
@@ -211,31 +219,30 @@ TEST_NAME=teamA_load_ramp_up
 mkdir -p teams/teamC/load/my_test
 ```
 
-### 2. Create config.yaml
-```yaml
-test_name: "teamC_load_my_test"
-base_url: "https://api.example.com"
-endpoints:
-  endpoint1: "/path"
-scenarios:
-  my_scenario:
-    executor: "ramping-vus"
-    stages:
-      - duration: "30s"
-        target: 10
-thresholds:
-  http_req_duration:
-    - "p(95)<1000"
-```
-
-### 3. Create test.js
+### 2. Create test.js with inline configuration
 ```javascript
 import { sleep } from 'k6';
 import { get } from '../../../../scenarios/shared/http_client.js';
 import { loadConfig } from '../../../../scenarios/shared/config_loader.js';
 
-const scenarioFile = __ENV.SCENARIO_FILE;
-const config = loadConfig(scenarioFile);
+const config = loadConfig({
+  test_name: "teamC_load_my_test",
+  base_url: "https://api.example.com",
+  endpoints: {
+    endpoint1: "/path"
+  },
+  scenarios: {
+    my_scenario: {
+      executor: "ramping-vus",
+      stages: [
+        { duration: "30s", target: 10 }
+      ]
+    }
+  },
+  thresholds: {
+    http_req_duration: ["p(95)<1000"]
+  }
+});
 
 export const options = {
   scenarios: config.scenarios,
@@ -250,9 +257,10 @@ export default function () {
 
 ## Troubleshooting
 
-### Tests fail with "config file not found"
-- Ensure `SCENARIO_FILE` environment variable is set correctly
-- Use absolute or relative path from project root
+### Tests fail with "config validation failed"
+- Ensure all required fields are present: `test_name`, `base_url`, `scenarios`
+- Check that `test_name` contains only alphanumeric characters, underscores, and hyphens
+- Verify `base_url` starts with `http://` or `https://`
 
 ### Retry not working
 - Check `HTTP_RETRY_MAX_ATTEMPTS` is set > 1
@@ -261,7 +269,7 @@ export default function () {
 
 ### Environment overrides not applied
 - Ensure `K6_ENV` is set (defaults to 'dev')
-- Verify `environments` section exists in config.yaml
+- Verify `environments` section exists in your config object
 - Check console output for loaded environment
 
 ### Prometheus metrics not appearing

@@ -1,70 +1,54 @@
-// Note: Using built-in open() function (no import needed)
-// open() is a global function in k6 for reading files
-import yaml from 'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.mjs';
 import { validateConfig } from './validators.js';
 import { applyEnvironmentOverrides, getCurrentEnvironment } from './environment.js';
 
 /**
- * Load and parse a YAML configuration file, validate it, and apply environment overrides.
+ * Load and validate a JavaScript configuration object, and apply environment overrides.
  *
- * @param {string} path - Path to the YAML file relative to the project root.
- * @returns {object} Parsed, validated, and environment-configured object.
+ * @param {object} configObj - Configuration object defined inline in the test file.
+ * @returns {object} Validated and environment-configured object.
  */
-export function loadConfig(path) {
+export function loadConfig(configObj) {
   let config;
-  let rawContent;
 
   try {
-    // Step 1: Read file
-    rawContent = open(path);
-    if (!rawContent) {
-      throw new Error(`File is empty or could not be read: ${path}`);
+    // Step 1: Validate input
+    if (!configObj || typeof configObj !== 'object') {
+      throw new Error('Config must be a valid object');
     }
+
+    // Create a copy to avoid mutating the original
+    config = JSON.parse(JSON.stringify(configObj));
   } catch (err) {
     throw new Error(
-      `Failed to read config file: ${path}\n` +
+      `Failed to process config object\n` +
       `Error: ${err.message}\n` +
-      `Hint: Ensure the file exists and is readable.`
+      `Hint: Ensure config is a valid JavaScript object.`
     );
   }
 
   try {
-    // Step 2: Parse YAML
-    config = yaml.load(rawContent);
-    if (!config || typeof config !== 'object') {
-      throw new Error('Parsed YAML is not a valid object');
-    }
+    // Step 2: Validate schema
+    validateConfig(config, '<inline>');
   } catch (err) {
     throw new Error(
-      `Failed to parse YAML config: ${path}\n` +
-      `Error: ${err.message}\n` +
-      `Hint: Check YAML syntax - indentation, colons, quotes.`
-    );
-  }
-
-  try {
-    // Step 3: Validate schema
-    validateConfig(config, path);
-  } catch (err) {
-    throw new Error(
-      `Config validation failed: ${path}\n` +
+      `Config validation failed\n` +
       `Error: ${err.message}\n` +
       `Hint: Ensure all required fields are present and properly typed.`
     );
   }
 
   try {
-    // Step 4: Apply environment overrides
+    // Step 3: Apply environment overrides
     const env = getCurrentEnvironment();
     config = applyEnvironmentOverrides(config);
 
-    console.log(`✓ Loaded config: ${path} (environment: ${env})`);
+    console.log(`✓ Loaded config: ${config.test_name || '<unnamed>'} (environment: ${env})`);
     if (config.base_url) {
       console.log(`  Base URL: ${config.base_url}`);
     }
   } catch (err) {
     throw new Error(
-      `Failed to apply environment overrides: ${path}\n` +
+      `Failed to apply environment overrides\n` +
       `Error: ${err.message}`
     );
   }

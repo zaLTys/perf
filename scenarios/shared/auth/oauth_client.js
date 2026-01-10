@@ -3,13 +3,14 @@ import http from 'k6/http';
 /**
  * OAuth2 client_credentials flow.
  *
- * Expects in YAML:
- * auth:
- *   type: oauth2
- *   token_url: "https://auth.example.com/oauth/token"
- *   client_id: "perfclient"
- *   client_secret_env: "OAUTH_CLIENT_SECRET"
+ * Expects in config:
+ * auth: {
+ *   type: "oauth2",
+ *   token_url: "https://auth.example.com/oauth/token",
+ *   client_id: "perfclient",
+ *   client_secret_env: "OAUTH_CLIENT_SECRET",
  *   scope: "read write"
+ * }
  */
 export function getOAuthToken(config) {
   if (!config.auth || config.auth.type !== 'oauth2') {

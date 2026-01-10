@@ -14,7 +14,7 @@ This is the easiest way and works exactly like Jenkins will run it in production
 
 **Or manually with docker exec:**
 ```powershell
-docker exec k6 k6 run --out experimental-prometheus-rw -e SCENARIO_FILE=/workspace/teams/teamA/load/weather_api/config.yaml /workspace/teams/teamA/load/weather_api/test.js
+docker exec k6 k6 run --out experimental-prometheus-rw /workspace/teams/teamA/load/weather_api/test.js
 ```
 
 ### 2. 🔧 Install k6 Locally (Optional)
@@ -35,7 +35,7 @@ winget install k6 --source winget
 
 Then run:
 ```powershell
-k6 run --out experimental-prometheus-rw -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml teams/teamA/load/weather_api/test.js
+k6 run --out experimental-prometheus-rw teams/teamA/load/weather_api/test.js
 ```
 
 ### 3. 🏭 Via Jenkins Pipeline (Production)
@@ -59,7 +59,6 @@ In your Jenkins instance, the `Jenkinsfile.run` pipeline will:
 
 ### Step 1: Start Docker Stack
 ```powershell
-cd c:\Projects\Learning\k6-performance-poc\docker
 docker-compose up -d
 ```
 
@@ -74,7 +73,7 @@ The k6 dashboard should already be loaded!
 
 ### Step 3: Run Test
 ```powershell
-cd c:\Projects\Learning\k6-performance-poc
+cd ...\k6-performance-poc
 .\run-test.ps1 teamA_load_weather_api
 ```
 
@@ -87,7 +86,7 @@ Refresh the dashboard and watch the real-time metrics! 📊
 
 List all available tests:
 ```powershell
-docker exec k6 sh -c "find /workspace/teams -name 'config.yaml' -exec grep -H 'test_name:' {} \;"
+docker exec k6 sh -c "find /workspace/teams -name 'test.js' -type f"
 ```
 
 Current tests:
@@ -122,17 +121,10 @@ docker-compose up -d
 3. Wait 10-20 seconds after test starts
 4. Refresh Grafana dashboard
 
-### Test fails with "config file not found"
-The paths in the container use `/workspace/` prefix:
-```powershell
-# Correct
-docker exec k6 k6 run -e SCENARIO_FILE=/workspace/teams/teamA/load/weather_api/config.yaml /workspace/teams/teamA/load/weather_api/test.js
-
-# Incorrect (missing /workspace)
-docker exec k6 k6 run -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml teams/teamA/load/weather_api/test.js
-```
-
-But the `run-test.ps1` script handles this automatically!
+### Test fails with "config validation failed"
+- Ensure all required fields are present in your test.js config: `test_name`, `base_url`, `scenarios`
+- Check that `test_name` contains only alphanumeric characters, underscores, and hyphens
+- Verify `base_url` starts with `http://` or `https://`
 
 ---
 
@@ -143,7 +135,6 @@ But the `run-test.ps1` script handles this automatically!
 docker exec k6 k6 run `
   -e K6_ENV=staging `
   -e HTTP_RETRY_MAX_ATTEMPTS=5 `
-  -e SCENARIO_FILE=/workspace/teams/teamA/load/weather_api/config.yaml `
   /workspace/teams/teamA/load/weather_api/test.js
 ```
 
@@ -152,7 +143,6 @@ docker exec k6 k6 run `
 docker exec k6 k6 run `
   --vus 50 `
   --duration 5m `
-  -e SCENARIO_FILE=/workspace/teams/teamA/load/weather_api/config.yaml `
   /workspace/teams/teamA/load/weather_api/test.js
 ```
 
@@ -161,7 +151,6 @@ docker exec k6 k6 run `
 docker exec k6 k6 run `
   --out json=/workspace/results.json `
   --out experimental-prometheus-rw `
-  -e SCENARIO_FILE=/workspace/teams/teamA/load/weather_api/config.yaml `
   /workspace/teams/teamA/load/weather_api/test.js
 ```
 

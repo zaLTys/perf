@@ -3,12 +3,13 @@ import http from 'k6/http';
 /**
  * Simple JWT fetch + auto-refresh helper.
  *
- * Expects in YAML:
- * auth:
- *   type: jwt
- *   login_url: "https://auth.example.com/login"
- *   username_env: "AUTH_USERNAME"
+ * Expects in config:
+ * auth: {
+ *   type: "jwt",
+ *   login_url: "https://auth.example.com/login",
+ *   username_env: "AUTH_USERNAME",
  *   password_env: "AUTH_PASSWORD"
+ * }
  */
 let cachedToken = null;
 let tokenExpiresAt = 0;

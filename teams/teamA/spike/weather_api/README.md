@@ -86,10 +86,6 @@ k6 run teams/teamA/spike/weather_api/test.js
 k6 run --env ENVIRONMENT=prod teams/teamA/spike/weather_api/test.js
 ```
 
-### With custom config
-```bash
-k6 run --env SCENARIO_FILE=path/to/custom/config.yaml teams/teamA/spike/weather_api/test.js
-```
 
 ### With Prometheus metrics
 ```bash

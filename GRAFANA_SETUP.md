@@ -46,7 +46,7 @@ http://localhost:3000
 ```powershell
 cd c:\Projects\Learning\k6-performance-poc
 
-k6 run --out experimental-prometheus-rw -e SCENARIO_FILE=teams/teamA/load/weather_api/config.yaml teams/teamA/load/weather_api/test.js
+k6 run --out experimental-prometheus-rw teams/teamA/load/weather_api/test.js
 ```
 
 **Watch the dashboard update in real-time!** 🎉

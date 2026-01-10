@@ -8,9 +8,7 @@ if [ -z "$TEST_NAME" ]; then
   exit 1
 fi
 
-SCENARIO_FILE=$(jenkins/find_scenario_by_test_name.sh "$TEST_NAME")
-TEST_DIR=$(dirname "$SCENARIO_FILE")
-TEST_JS="${TEST_DIR}/test.js"
+TEST_JS=$(jenkins/find_scenario_by_test_name.sh "$TEST_NAME")
 
 if [ ! -f "$TEST_JS" ]; then
   echo "Test JS not found: $TEST_JS" >&2
@@ -18,10 +16,8 @@ if [ ! -f "$TEST_JS" ]; then
 fi
 
 echo "Running TEST_NAME=$TEST_NAME"
-echo "  Config: $SCENARIO_FILE"
 echo "  Script: $TEST_JS"
 
 k6 run \
   --out experimental-prometheus-rw \
-  -e SCENARIO_FILE="$SCENARIO_FILE" \
   "$TEST_JS"
