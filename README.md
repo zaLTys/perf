@@ -188,8 +188,8 @@ export default function () {
 ### 3. Validate & Run
 
 ```bash
-# Validate
-k6 run --dry-run teams/yourTeam/load/my_test/test.js
+# Validate (runs for 1 second with 0 VUs to check syntax)
+k6 run --duration 1s --vus 0 teams/yourTeam/load/my_test/test.js
 
 # Run
 ./scripts/run-test.sh yourTeam_load_my_test
@@ -285,7 +285,7 @@ find teams -name test.js
 
 1. Create feature branch
 2. Add/modify tests in appropriate team folder
-3. Validate: `k6 run --dry-run teams/.../test.js`
+3. Validate: `k6 run --duration 1s --vus 0 teams/.../test.js`
 4. Submit PR (validation runs automatically)
 
 ## License
