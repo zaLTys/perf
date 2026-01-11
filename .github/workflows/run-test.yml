@@ -82,43 +82,34 @@ jobs:
         id: run-test
         run: |
           cd docker
-          # Docker Compose creates network as: {directory}_{project}_default
-          # Since we're in 'docker' directory, default network is 'docker_default'
-          # Get the actual network name from the running prometheus container
           PROMETHEUS_ID=$(docker compose ps -q prometheus)
-          
           if [ -n "$PROMETHEUS_ID" ]; then
-            # Extract network name from container's network settings (JSON format)
-            # docker inspect outputs JSON, we extract the network name ending with _default
-            NETWORK=$(docker inspect "$PROMETHEUS_ID" | grep -o '"[^"]*_default"' | head -1 | tr -d '"')
+            NETWORK=$(docker inspect -f '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' "$PROMETHEUS_ID")
           fi
-          
-          # Fallback to default network name
           if [ -z "$NETWORK" ]; then
             NETWORK="docker_default"
             echo "⚠️ Using default network: $NETWORK"
           else
             echo "✓ Detected network: $NETWORK"
           fi
-          
-          # Verify network exists before using it
           if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
             echo "❌ Error: Network $NETWORK does not exist!"
-            echo "Available networks:"
             docker network ls
             exit 1
           fi
-          
           echo "Using Docker network: $NETWORK"
+          
+          export K6_PROMETHEUS_RW_SERVER_URL="http://prometheus:9090/api/v1/write"
+          export K6_PROMETHEUS_RW_TREND_STATS='p(90),p(95),p(99),min,max,avg,med'
           
           docker run --rm \
             --network "$NETWORK" \
-            -v ${{ github.workspace }}:/workspace \
+            -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
-            -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
-            -e K6_PROMETHEUS_RW_TREND_STATS=p(90),p(95),p(99),min,max,avg,med \
+            -e K6_PROMETHEUS_RW_SERVER_URL \
+            -e K6_PROMETHEUS_RW_TREND_STATS \
             grafana/k6:latest run \
-            --tag testid="${{ inputs.test_name }}" \
+            --tag "testid=${{ inputs.test_name }}" \
             --out experimental-prometheus-rw \
             "${{ steps.find-test.outputs.test_js }}"
         continue-on-error: true
