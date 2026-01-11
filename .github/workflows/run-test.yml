@@ -82,23 +82,31 @@ jobs:
         id: run-test
         run: |
           cd docker
-          # Get the network name from docker compose
-          # Docker Compose creates network based on directory name
-          # Get the project name and construct network name
-          PROJECT_NAME=$(basename "$(pwd)")
-          NETWORK="${PROJECT_NAME}_default"
+          # Docker Compose creates network as: {directory}_{project}_default
+          # Since we're in 'docker' directory, default network is 'docker_default'
+          # Get the actual network name from the running prometheus container
+          PROMETHEUS_ID=$(docker compose ps -q prometheus)
           
-          # Verify network exists, if not try to detect it
+          if [ -n "$PROMETHEUS_ID" ]; then
+            # Extract network name from container's network settings (JSON format)
+            # docker inspect outputs JSON, we extract the network name ending with _default
+            NETWORK=$(docker inspect "$PROMETHEUS_ID" | grep -o '"[^"]*_default"' | head -1 | tr -d '"')
+          fi
+          
+          # Fallback to default network name
+          if [ -z "$NETWORK" ]; then
+            NETWORK="docker_default"
+            echo "⚠️ Using default network: $NETWORK"
+          else
+            echo "✓ Detected network: $NETWORK"
+          fi
+          
+          # Verify network exists before using it
           if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
-            echo "⚠️ Network $NETWORK not found, detecting..."
-            PROMETHEUS_ID=$(docker compose ps -q prometheus)
-            if [ -n "$PROMETHEUS_ID" ]; then
-              NETWORK=$(docker inspect -f '{{range $net, $v := .NetworkSettings.Networks}}{{$net}}{{end}}' "$PROMETHEUS_ID" | head -1)
-            fi
-            if [ -z "$NETWORK" ]; then
-              echo "⚠️ Could not detect network, using default..."
-              NETWORK="docker_default"
-            fi
+            echo "❌ Error: Network $NETWORK does not exist!"
+            echo "Available networks:"
+            docker network ls
+            exit 1
           fi
           
           echo "Using Docker network: $NETWORK"
