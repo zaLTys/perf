@@ -83,13 +83,22 @@ jobs:
         run: |
           cd docker
           # Get the network name from docker compose
-          # Docker Compose creates network as: {directory}_{project}_default
-          # Since we're in 'docker' directory, it's typically 'docker_default'
-          NETWORK=$(docker compose ps -q prometheus | xargs docker inspect --format='{{range $net, $v := .NetworkSettings.Networks}}{{println $net}}{{end}}' | head -1 | tr -d '\n')
+          # Docker Compose creates network based on directory name
+          # Get the project name and construct network name
+          PROJECT_NAME=$(basename "$(pwd)")
+          NETWORK="${PROJECT_NAME}_default"
           
-          if [ -z "$NETWORK" ]; then
-            echo "⚠️ Could not detect network, trying default..."
-            NETWORK="docker_default"
+          # Verify network exists, if not try to detect it
+          if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
+            echo "⚠️ Network $NETWORK not found, detecting..."
+            PROMETHEUS_ID=$(docker compose ps -q prometheus)
+            if [ -n "$PROMETHEUS_ID" ]; then
+              NETWORK=$(docker inspect -f '{{range $net, $v := .NetworkSettings.Networks}}{{$net}}{{end}}' "$PROMETHEUS_ID" | head -1)
+            fi
+            if [ -z "$NETWORK" ]; then
+              echo "⚠️ Could not detect network, using default..."
+              NETWORK="docker_default"
+            fi
           fi
           
           echo "Using Docker network: $NETWORK"
