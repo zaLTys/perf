@@ -1,0 +1,150 @@
+name: Run Performance Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_name:
+        description: 'Test to run (format: teamName_testType_testName)'
+        required: true
+        type: choice
+        options:
+          - teamA_load_weather_api
+          - teamA_smoke_health_check
+          - teamA_spike_weather_api
+          - teamA_stress_peak_load
+      grafana_url:
+        description: 'Grafana URL (optional, for linking results)'
+        required: false
+        type: string
+        default: 'http://localhost:3000'
+
+jobs:
+  run-test:
+    name: Run ${{ inputs.test_name }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start observability stack
+        run: |
+          cd docker
+          docker-compose up -d prometheus grafana
+          echo "Waiting for services to be ready..."
+          sleep 15
+          docker-compose ps
+          
+      - name: Show container logs
+        run: |
+          cd docker
+          echo "=== Prometheus logs ==="
+          docker-compose logs --tail=20 prometheus
+          echo ""
+          echo "=== Grafana logs ==="
+          docker-compose logs --tail=20 grafana
+          echo ""
+          echo "=== Container status ==="
+          docker-compose ps
+
+      - name: Find test script
+        id: find-test
+        run: |
+          TEST_NAME="${{ inputs.test_name }}"
+          
+          # Split by first two underscores: teamA_load_weather_api -> teamA/load/weather_api
+          IFS='_' read -ra PARTS <<< "$TEST_NAME"
+          if [ ${#PARTS[@]} -ge 3 ]; then
+            TEAM="${PARTS[0]}"
+            TEST_TYPE="${PARTS[1]}"
+            shift=2
+            TEST_NAME_JOINED=$(IFS='_'; echo "${PARTS[*]:$shift}")
+            TEST_JS="teams/${TEAM}/${TEST_TYPE}/${TEST_NAME_JOINED}/test.js"
+          else
+            echo "❌ Invalid test name format"
+            exit 1
+          fi
+          
+          if [ ! -f "$TEST_JS" ]; then
+            echo "❌ Test file not found: $TEST_JS"
+            echo "Available tests:"
+            find teams -name "test.js" -type f
+            exit 1
+          fi
+          
+          echo "test_js=$TEST_JS" >> $GITHUB_OUTPUT
+          echo "✓ Found test: $TEST_JS"
+
+      - name: Run k6 test
+        id: run-test
+        run: |
+          cd docker
+          # Get the network name from docker-compose
+          # Docker Compose creates network as: {directory}_{project}_default
+          # Since we're in 'docker' directory, it's typically 'docker_default'
+          NETWORK=$(docker-compose ps -q prometheus | xargs docker inspect --format='{{range $net, $v := .NetworkSettings.Networks}}{{println $net}}{{end}}' | head -1 | tr -d '\n')
+          
+          if [ -z "$NETWORK" ]; then
+            echo "⚠️ Could not detect network, trying default..."
+            NETWORK="docker_default"
+          fi
+          
+          echo "Using Docker network: $NETWORK"
+          
+          docker run --rm \
+            --network "$NETWORK" \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
+            -e K6_PROMETHEUS_RW_TREND_STATS=p(90),p(95),p(99),min,max,avg,med \
+            grafana/k6:latest run \
+            --tag testid="${{ inputs.test_name }}" \
+            --out experimental-prometheus-rw \
+            "${{ steps.find-test.outputs.test_js }}"
+        continue-on-error: true
+
+      - name: Check test results
+        if: steps.run-test.outcome == 'failure'
+        run: |
+          echo "❌ Test failed"
+          exit 1
+
+      - name: Generate summary
+        if: always()
+        run: |
+          TEST_NAME="${{ inputs.test_name }}"
+          GRAFANA_URL="${{ inputs.grafana_url }}"
+          
+          # Create Grafana dashboard link with testid filter
+          GRAFANA_LINK="${GRAFANA_URL}/d/k6-dashboard/k6-dashboard?var-testid=${TEST_NAME}"
+          
+          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test:** \`${TEST_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.run-test.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 View in Grafana" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [Open Dashboard with Test ID Filter](${GRAFANA_LINK})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** If Grafana is not publicly accessible, use a tunnel (ngrok, Cloudflare Tunnel) or access locally." >> $GITHUB_STEP_SUMMARY
+
+      - name: Show final container logs
+        if: always()
+        run: |
+          cd docker
+          echo "=== Final Prometheus logs ==="
+          docker-compose logs --tail=30 prometheus || true
+          echo ""
+          echo "=== Final Grafana logs ==="
+          docker-compose logs --tail=30 grafana || true
+
+      - name: Stop observability stack
+        if: always()
+        run: |
+          cd docker
+          docker-compose down

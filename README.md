@@ -236,6 +236,25 @@ Run with: `k6 run -e K6_ENV=staging teams/.../test.js`
 
 ## CI/CD
 
+### GitHub Actions
+
+**Location:** `.github/workflows/`
+
+Run tests directly from GitHub UI:
+
+1. Go to **Actions** tab → **Run Performance Test**
+2. Click **Run workflow**
+3. Select test from dropdown
+4. (Optional) Enter Grafana URL if publicly accessible
+5. Click **Run workflow**
+
+**Results:**
+- ✅ Test status shown in GitHub Actions UI
+- 📊 Link to Grafana dashboard with test ID filter
+- 📝 Full test output in workflow logs
+
+**Note:** For Grafana links to work, Grafana must be publicly accessible (use ngrok, Cloudflare Tunnel, or hosted Grafana).
+
 ### Jenkins Pipelines
 
 **Location:** `.ci/jenkins/`
@@ -245,7 +264,7 @@ Run with: `k6 run -e K6_ENV=staging teams/.../test.js`
 
 ```bash
 # Trigger via Jenkins API
-TEST_NAME=teamA_load_ramp_up
+TEST_NAME=teamA_load_weather_api
 ```
 
 ## Troubleshooting
