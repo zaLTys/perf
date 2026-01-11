@@ -79,7 +79,8 @@ perf/
 │   └── [team-name]/
 │       └── [test-type]/      # load, smoke, spike, stress, soak
 │           └── [test-name]/
-│               └── test.js
+│               ├── test.js
+│               └── definition.md  # Optional test documentation
 ├── shared/                   # Shared utilities
 │   ├── http_client.js        # HTTP client with retry
 │   ├── config_loader.js      # Config loader & validator

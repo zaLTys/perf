@@ -59,7 +59,8 @@ for SCENARIO_DIR in $SCENARIOS; do
   
   # Check for unexpected files at scenario level (warn only)
   # Note: config.yaml files are no longer used - config is inline in test.js
-  UNEXPECTED_FILES=$(find "$SCENARIO_DIR" -maxdepth 1 -type f ! -name "test.js" ! -name "README.md" ! -name "*.md" ! -name "config.yaml")
+  # definition.md is allowed for test documentation
+  UNEXPECTED_FILES=$(find "$SCENARIO_DIR" -maxdepth 1 -type f ! -name "test.js" ! -name "definition.md" ! -name "*.md" ! -name "config.yaml")
   if [ -n "$UNEXPECTED_FILES" ]; then
     echo "WARNING: Unexpected files in $SCENARIO_DIR:"
     echo "$UNEXPECTED_FILES" | sed 's/^/  /'
