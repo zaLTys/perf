@@ -120,6 +120,71 @@ jobs:
           echo "❌ Test failed"
           exit 1
 
+      - name: Capture Grafana dashboard snapshot
+        if: always() && steps.run-test.outcome != 'cancelled'
+        run: |
+          cd docker
+          # Wait for metrics to be written to Prometheus
+          echo "Waiting for metrics to be available..."
+          sleep 10
+          
+          # Get network name
+          PROMETHEUS_ID=$(docker compose ps -q prometheus)
+          if [ -n "$PROMETHEUS_ID" ]; then
+            NETWORK=$(docker inspect -f '{{range $k, $_ := .NetworkSettings.Networks}}{{$k}}{{end}}' "$PROMETHEUS_ID")
+          fi
+          if [ -z "$NETWORK" ]; then
+            NETWORK="docker_default"
+          fi
+          
+          # Get test time range (last 10 minutes to capture the test)
+          TEST_NAME="${{ inputs.test_name }}"
+          # Calculate timestamps (works on Linux - GitHub Actions uses Ubuntu)
+          FROM_TIME=$(($(date +%s) - 600))000
+          TO_TIME=$(date +%s)000
+          
+          # Create dashboard URL with test ID filter and time range
+          DASHBOARD_URL="http://grafana:3000/d/k6-dashboard/k6-dashboard?var-testid=${TEST_NAME}&from=${FROM_TIME}&to=${TO_TIME}&kiosk=tv"
+          
+          echo "Capturing dashboard snapshot..."
+          echo "Dashboard URL: ${DASHBOARD_URL}"
+          
+          # Create output directory
+          mkdir -p "${{ github.workspace }}/grafana-snapshots"
+          
+          # Use Playwright container to capture screenshot
+          docker run --rm \
+            --network "$NETWORK" \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            mcr.microsoft.com/playwright:v1.40.0-focal \
+            sh -c "
+              npx playwright install chromium && \
+              node -e \"
+                const { chromium } = require('playwright');
+                (async () => {
+                  const browser = await chromium.launch({ headless: true });
+                  const page = await browser.newPage();
+                  await page.setViewportSize({ width: 1920, height: 1080 });
+                  await page.goto('${DASHBOARD_URL}', { waitUntil: 'networkidle', timeout: 30000 });
+                  await page.waitForTimeout(5000);
+                  await page.screenshot({ path: '/workspace/grafana-snapshots/dashboard-${TEST_NAME}.png', fullPage: true });
+                  await browser.close();
+                })();
+              \"
+            "
+          
+          echo "✓ Screenshot captured: grafana-snapshots/dashboard-${TEST_NAME}.png"
+
+      - name: Upload Grafana snapshot
+        if: always() && steps.run-test.outcome != 'cancelled'
+        uses: actions/upload-artifact@v4
+        with:
+          name: grafana-dashboard-${{ inputs.test_name }}
+          path: grafana-snapshots/dashboard-${{ inputs.test_name }}.png
+          retention-days: 30
+          if-no-files-found: warn
+
       - name: Generate summary
         if: always()
         run: |
@@ -139,6 +204,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [Open Dashboard with Test ID Filter](${GRAFANA_LINK})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if screenshot was captured
+          if [ -f "grafana-snapshots/dashboard-${TEST_NAME}.png" ]; then
+            echo "### 📸 Dashboard Snapshot" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "A dashboard snapshot has been captured and uploaded as an artifact." >> $GITHUB_STEP_SUMMARY
+            echo "Download it from the workflow artifacts to view the test results." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "**Note:** If Grafana is not publicly accessible, use a tunnel (ngrok, Cloudflare Tunnel) or access locally." >> $GITHUB_STEP_SUMMARY
 
       - name: Show final container logs
