@@ -33,22 +33,22 @@ jobs:
       - name: Start observability stack
         run: |
           cd docker
-          docker-compose up -d prometheus grafana
+          docker compose up -d prometheus grafana
           echo "Waiting for services to be ready..."
           sleep 15
-          docker-compose ps
+          docker compose ps
           
       - name: Show container logs
         run: |
           cd docker
           echo "=== Prometheus logs ==="
-          docker-compose logs --tail=20 prometheus
+          docker compose logs --tail=20 prometheus
           echo ""
           echo "=== Grafana logs ==="
-          docker-compose logs --tail=20 grafana
+          docker compose logs --tail=20 grafana
           echo ""
           echo "=== Container status ==="
-          docker-compose ps
+          docker compose ps
 
       - name: Find test script
         id: find-test
@@ -82,10 +82,10 @@ jobs:
         id: run-test
         run: |
           cd docker
-          # Get the network name from docker-compose
+          # Get the network name from docker compose
           # Docker Compose creates network as: {directory}_{project}_default
           # Since we're in 'docker' directory, it's typically 'docker_default'
-          NETWORK=$(docker-compose ps -q prometheus | xargs docker inspect --format='{{range $net, $v := .NetworkSettings.Networks}}{{println $net}}{{end}}' | head -1 | tr -d '\n')
+          NETWORK=$(docker compose ps -q prometheus | xargs docker inspect --format='{{range $net, $v := .NetworkSettings.Networks}}{{println $net}}{{end}}' | head -1 | tr -d '\n')
           
           if [ -z "$NETWORK" ]; then
             echo "⚠️ Could not detect network, trying default..."
@@ -138,13 +138,13 @@ jobs:
         run: |
           cd docker
           echo "=== Final Prometheus logs ==="
-          docker-compose logs --tail=30 prometheus || true
+          docker compose logs --tail=30 prometheus || true
           echo ""
           echo "=== Final Grafana logs ==="
-          docker-compose logs --tail=30 grafana || true
+          docker compose logs --tail=30 grafana || true
 
       - name: Stop observability stack
         if: always()
         run: |
           cd docker
-          docker-compose down
+          docker compose down
